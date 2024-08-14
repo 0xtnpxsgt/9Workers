@@ -71,7 +71,7 @@ cd $HOME && cd basic-coin-prediction-node
 docker compose down -v
 docker container prune
 
-cd $HOME && rm -rf basic-coin-prediction-node=
+cd $HOME && rm -rf basic-coin-prediction-node
 ```
 
 
