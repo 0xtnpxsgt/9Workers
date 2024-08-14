@@ -194,15 +194,18 @@ nano config.json
     ]
 }
 ```
+## Export 
 ```bash
 chmod +x init.config
 ./init.config
 ```
+
+## Build
 ```bash
 docker compose up --build -d
 ```
 
-# Check Logs 
+## Check Logs 
 ```bash
 docker compose logs -f worker
 ```
