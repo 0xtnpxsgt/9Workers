@@ -88,10 +88,6 @@ chmod -R 777 worker-data
 cp config.example.json config.json
 nano config.json
 ```
-```bash
-cp config.example.json config.json
-nano config.json
-```
 
 ####  Edit addressKeyName & addressRestoreMnemonic / Copy & Paste Inside config.json
 #### Optional: RPC :  https://allora-rpc.testnet-1.testnet.allora.network/
