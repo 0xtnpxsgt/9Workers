@@ -210,7 +210,8 @@ docker compose up --build -d
 docker compose logs -f worker
 ```
 
-
+## Check your wallet here: http://worker-tx.nodium.xyz/
+![image](https://github.com/user-attachments/assets/6e9ce7fd-fdf5-40d2-98f9-d20eb8486fce)
 
 
 
