@@ -201,6 +201,112 @@ chmod +x init.config
 ```bash
 nano app.py
 ```
+```
+from flask import Flask, Response
+import requests
+import json
+import pandas as pd
+from gluonts.mx.model.deepar import DeepAREstimator
+from gluonts.mx.trainer import Trainer
+from gluonts.dataset.common import ListDataset
+import mxnet as mx
+from gluonts.evaluation.backtest import make_evaluation_predictions
+import traceback
+import logging
+
+# create our Flask app
+app = Flask(__name__)
+
+def get_coingecko_url(token):
+    base_url = "https://api.coingecko.com/api/v3/coins/"
+    token_map = {
+        'ETH': 'ethereum',
+        'SOL': 'solana',
+        'BTC': 'bitcoin',
+        'BNB': 'binancecoin',
+        'ARB': 'arbitrum'
+    }
+    
+    token = token.upper()
+    if token in token_map:
+        url = f"{base_url}{token_map[token]}/market_chart?vs_currency=usd&days=30&interval=daily"
+        return url
+    else:
+        raise ValueError("Unsupported token")
+
+@app.route("/inference/<string:token>")
+def get_inference(token):
+    """Generate inference for given token."""
+    try:
+        # get the data from Coingecko
+        url = get_coingecko_url(token)
+    except ValueError as e:
+        return Response(json.dumps({"error": str(e)}), status=400, mimetype='application/json')
+
+    headers = {
+        "accept": "application/json",
+        "x-cg-demo-api-key": "CG-XXXXXXXXXXXXXXXXXXXXXXXX" # replace with your API key
+    }
+
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        data = response.json()
+        df = pd.DataFrame(data["prices"])
+        df.columns = ["date", "price"]
+        df["date"] = pd.to_datetime(df["date"], unit='ms')
+        df = df[:-1]  # removing today's price
+    else:
+        return Response(json.dumps({"Failed to retrieve data from the API": str(response.text)}), 
+                        status=response.status_code, 
+                        mimetype='application/json')
+
+    # Preparing the data for DeepAR
+    prediction_length = 1
+    training_data = ListDataset([{"start": df["date"][0], "target": df["price"][:-prediction_length]}],
+                                freq="D")
+
+    try:
+        # Define the DeepAR estimator
+        estimator = DeepAREstimator(freq="D",
+                                    prediction_length=prediction_length,
+                                    trainer=Trainer(epochs=5))
+
+        # Train the model and predict
+        predictor = estimator.train(training_data=training_data)
+
+        # Get predictions
+        forecast_it, ts_it = make_evaluation_predictions(dataset=training_data, predictor=predictor)
+        forecasts = list(forecast_it)
+        ts = list(ts_it)
+
+        # Access the mean of the forecasts
+        forecast_mean = forecasts[0].mean_ts.item()
+
+        return Response(str(forecast_mean), status=200)
+    except Exception as e:
+        logging.error(f"Inference error: {e}")
+        traceback.print_exc()  # Print the full stack trace for debugging
+        return Response(json.dumps({"error": str(e)}), status=500, mimetype='application/json')
+
+# run our Flask app
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=8000, debug=True)
+```
+## Edit requirements.txt
+```bash
+nano requirements.txt
+```
+```
+flask[async]
+gunicorn[gthread]
+transformers[torch]
+pandas
+python-dotenv
+gluonts>=0.11.4,<0.12.0
+mxnet
+numpy==1.19.5
+orjson
+```
 ## Build
 ```bash
 docker compose up --build -d
